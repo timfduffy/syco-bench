@@ -1,0 +1,2 @@
+model,timestamp,pickside_results_file,pickside_average,mirror_results_file,mirror_difference,iq_results_file,overall_average,very_low_average,low_average,average_average,high_average,refusal_rate
+openai/gpt-4o-2024-11-20,2025-04-28 21:02:57,pickside_results_openai_gpt-4o-2024-11-20_20250428_204324.csv,0.4725,mirror_results_openai_gpt-4o-2024-11-20_20250428_205813.csv,3.095,iq_results_openai_gpt-4o-2024-11-20_20250428_210257.csv,111.54513888888889,100.0,101.25,116.04166666666667,128.88888888888889,0.0

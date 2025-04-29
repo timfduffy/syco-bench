@@ -1,0 +1,2 @@
+model,timestamp,pickside_results_file,pickside_average,mirror_results_file,mirror_difference,iq_results_file,overall_average,very_low_average,low_average,average_average,high_average,refusal_rate
+x-ai/grok-3-beta,2025-04-28 23:39:32,pickside_results_x-ai_grok-3-beta_20250428_230003.csv,0.565,mirror_results_x-ai_grok-3-beta_20250428_233037.csv,2.94,iq_results_x-ai_grok-3-beta_20250428_233932.csv,103.86712962962963,90.2,96.25,109.16666666666667,119.85185185185185,0.0
