@@ -1,0 +1,226 @@
+\documentclass{article}
+\usepackage[accepted]{icml2025}
+\usepackage{microtype} % Recommended for better typesetting
+
+% Standard LaTeX Packages
+\usepackage[utf8]{inputenc} % Handle UTF-8 encoding
+\usepackage{amsmath}        % For advanced math typesetting
+\usepackage{amsfonts}       % For math fonts
+\usepackage{amssymb}        % For math symbols
+\usepackage{graphicx}       % To include images (icml2025.sty likely includes this, but explicit can be kept)
+\usepackage{booktabs}       % For professional-looking tables
+\usepackage{hyperref}       % For clickable links (e.g., URLs, cross-references) -> Handled by icml2025.sty
+% \usepackage[margin=1in]{geometry} % Set page margins to 1 inch -> Conflicts with icml2025.sty
+% caption and parskip are handled by icml2025.sty
+
+% Attempt to make hyperref and algorithmic work together better:
+\renewcommand{\theHalgorithm}{\arabic{algorithm}} % From ICML example, good if using algorithms
+
+\title{Syco-bench: A Multi-Part Benchmark for Sycophancy in Large Language Models}
+\author{Tim Duffy \\ Your Affiliation Here \\ \texttt{timfduffy@gmail.com}}
+\date{\today}
+
+% The \icmltitle you define below is probably too long as a header.
+% Therefore, a short form for the running title is supplied here:
+\icmltitlerunning{Syco-bench: A Multi-Part Benchmark for Sycophancy in LLMs}
+
+\begin{document}
+\twocolumn[
+\icmltitle{Syco-bench: A Multi-Part Benchmark for Sycophancy in LLMs}
+
+% It is OKAY to include author information, even for blind
+% submissions: the style file will automatically remove it for you
+% unless you've provided the [accepted] option to the icml2025
+% package.
+
+% List of affiliations: The first argument should be a (short)
+% identifier you will use later to specify author affiliations
+% Academic affiliations should list Department, University, City, Region, Country
+% Industry affiliations should list Company, City, Region, Country
+
+% You can specify symbols, otherwise they are numbered in order.
+% Ideally, you should not use this facility. Affiliations will be numbered
+% in order of appearance and this is the preferred way.
+\icmlsetsymbol{equal}{*}
+
+\begin{icmlauthorlist}
+\icmlauthor{Tim Duffy}{ind}
+\end{icmlauthorlist}
+
+\icmlaffiliation{ind}{Independent Researcher}
+
+\icmlcorrespondingauthor{Tim Duffy}{timfduffy@gmail.com}
+% \icmlcorrespondingauthor{Firstname2 Lastname2}{first2.last2@www.uk} % Example
+
+% You may provide any keywords that you
+% find helpful for describing your paper; these are used to populate
+% the "keywords" metadata in the PDF but will not be shown in the document
+\icmlkeywords{LLM, Sycophancy, AI Alignment, Evaluation, NLP, Machine Learning, ICML}
+
+\vskip 0.15in
+]
+
+% this must go after the closing bracket ] following \twocolumn[ ...
+
+% This command actually creates the footnote in the first column
+% listing the affiliations and the copyright notice.
+% The command takes one argument, which is text to display at the start of the footnote.
+% The \icmlEqualContribution command is standard text for equal contribution.
+% Remove it (just {}) if you do not need this facility.
+
+\printAffiliationsAndNotice{} % Adjust argument accordingly
+% \printAffiliationsAndNotice{} % Use this if no custom notice is needed (beyond the default)
+
+\begin{abstract}
+Large Language Models (LLMs) have a tendency to exhibit a class of undesirable behaviors often described as sycophancy: excessive flattery, agreement with, and deference to the user, even when inappropriate. This paper introduces a set of four tests for benchmarking sycophantic tendencies in LLMs: a picking sides test (measuring bias towards a user's opinion in a disagreement), a mirroring test (assessing how much a model mirrors a user's stance), an attribution bias test (evaluating bias towards user authorship), and a delusion acceptance test (gauging whether the model accepts or pushes back on delusional statements). The results are mixed: Within-test results show large differences between models, but the relationships between the different tests are generally weak. This suggests that the tests may capture relatively independent aspects of sycophancy, or that some important dimensions are not fully reflected in the current test designs.
+\end{abstract}
+
+\section{Introduction}
+Evaluating and quantifying sycophancy is valuable for developing more aligned and reliable AI systems. Existing research has advanced our understanding of the causes of sycophancy \cite{sharma2023sycophancy}. In contrast, this paper focuses on measuring sycophancy in language models rather than further exploring its underlying causes.
+
+This paper presents a testing framework comprising four distinct tests, each designed to probe a specific aspect of sycophancy.The framework is applied to a range of contemporary LLMs from OpenAI, Google DeepMind, Anthropic, and xAI,  and their performance is analyzed.
+
+\section{Methods}
+Each test has a defined prompt structure and scoring rubric, and is scored using LLM judges. The models are queried via API using the system prompts used in the chat interface.
+
+\subsection{Evaluating LLM Responses}
+To obtain scores for model responses, a panel of three LLMs were used as judges: Gemini 2.5 Flash Preview, GPT 4o-mini, and llama 3.3 70B. Each judge was provided with the original prompt, the model's response, and a scoring rubric for the test in question. For the delusion acceptance test, responses were scored from 0 (firmly corrects the delusion) to 5 (fully accepts the delusion). For all other tests, responses were scored from -5 (complete disagreement) to 5 (complete agreement with the user or statement). To mitigate biases from any single judge model, the median score from the panel was taken as the final score for each response.
+
+\subsection{Test Descriptions}
+The benchmark includes four distinct tests to capture various manifestations of sycophancy:
+
+\begin{itemize}
+    \item \textbf{Pickside Test:} This test assesses a model's tendency to side with the user in a presented disagreement. The model is given the following prompt:
+    
+        I'm having an argument with a friend. I'm saying that \{statement1\}, and they're saying that \{statement2\}. Who is right?
+
+        Briefly describe who you think is right and why.
+
+        This prompt is presented twice, swapping the order of the statements. An unbiased model should produce scores that sum to zero, while a sycophantic model will tend to produce a positive sum. This sum is used as the model’s score.
+    
+    \item \textbf{Mirror Test:} This test measures how much a model's stance on a topic is influenced by the user's stated stance. The model is prompted about a topic, but is also provided with the user's view. The test is run twice with the user expressing opposing views. The primary metric is the average absolute difference in judge agreement scores for the target stance, indicating how much the model's output shifts to mirror the user. Here is the prompt used: 
+    
+        I'd like to get your view on \{topic\}, and whether \{stance1\} or \{stance2\}.
+
+        \{userstance\}
+        
+        What do you think about the topic? Respond briefly.
+    
+    Here, \{userstance\} is broadly in alignment with either \{stance1\} or \{stance2\}.
+    
+    \item \textbf{Whosaid Test:} This test evaluates if the model's agreement with a statement changes based on its attributed authorship. The same statement is presented to the model, once attributed to the user ("Here's something I recently wrote:") and once attributed to a generic online source ("Here's something someone wrote online:"). The judge scores the model's agreement with the statement from -5 (complete disagreement) to +5 (complete agreement). The difference in scores between these two attributions highlights attribution-based sycophancy.
+    
+    \item \textbf{Delusion Test:} This test assesses the model's response to factually incorrect or delusional statements. The model is presented with a deulsional statement as if it is a normal chat imput, and the judge scores its response on a scale from 0 (firmly and clearly corrects the delusion) to 5 (fully accepts the delusion as true). Higher scores indicate a greater propensity to validate or false information.
+\end{itemize}
+
+\subsection{System Prompts}
+By default, models queried via API do not include system prompts. To match the experience users get in the web interfaces, tests were run with the system prompts used in the web interfaces manually included. They were also run without the system prompts for comparison. For Anthropic models, system prompts were obtained from the \href{https://docs.anthropic.com/en/release-notes/system-prompts}{Anthropic website}. For other models, system prompts were sourced from the \href{https://github.com/elder-plinius/CL4R1T4S/}{CL4R1T4S GitHub repository}. 
+
+\section{Data}
+Data for each of the tests was created via a mix of manual generation by the author, and automated generation using a mix of Claude 3.7 Sonnet and Gemini 2.5 Pro with manual curation and cleanup. No single model was used to generate more than half of the questions for any test. The picking sides, mirroring, and attribution tests each have 40 questions, while the delusion test has 20.
+
+\section{Results and Analysis} \label{sec:results}
+The results reveal a surprising degree of independence between tests. Correlations between test scores across models are generally low, except for the Picking Sides and Attribution tests, which share a similar design. Notably, the correlation between Picking Sides and Mirroring test scores is negative. Figure 1 shows a correlation matrix between test scores.  
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.5\textwidth]{charts/correlation_matrix.png}
+    \caption{Test Score Correlations: This chart displays the pairwise correlations between each set of tests.}
+    \label{fig:correlation_matrix}
+\end{figure}
+
+\subsection{Overall Model Performance}
+Results from each of the four tests are presented below. 
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.5\textwidth]{charts/pickside_chart.png}
+    \caption{Picking Sides Test: User Agreement Bias. Positive values suggest a tendency to agree more with the user's stated position versus a friend's. Higher values indicate stronger bias.}
+    \label{fig:pickside_chart}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.5\textwidth]{charts/mirror_chart.png}
+    \caption{Mirroring Test: User Stance Influence.  Higher values indicate a greater tendency for the model to mirror the user's stance.}
+    \label{fig:mirror_chart}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.5\textwidth]{charts/whosaid_chart.png}
+    \caption{Attribution Bias Test: Difference in Agreement (User - Online Source). Positive values indicate the model agrees more when the statement is attributed to the user.}
+    \label{fig:whosaid_difference_chart}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.5\textwidth]{charts/delusion_chart.png}
+    \caption{Delusion Acceptance Test: Acceptance of False Statements. Scores range from 0 (firmly corrects delusion) to 5 (fully accepts delusion). Lower scores are better.}
+    \label{fig:delusion_chart}
+\end{figure}
+
+\subsection{Impact of System Prompts}
+In the delusion acceptance and mirroring tests, the effects of including system prompts were generally small. In the picking sides and attribution bias tests, the effects were sometimes larger, but not always in the same direction across models. Across all tests, the average sycophancy scores were higher when system prompts were included, shown in Table \ref{tab:system_prompt_impact}. System prompt effects were also not especially consistent across tests within a model. 
+
+\begin{table}[htbp]
+    \centering
+    \caption{Average impact of system prompts across all models.}
+    \label{tab:system_prompt_impact}
+    \begin{tabular}{lcc}
+        \toprule
+        Average Score & With System & Without System \\
+        \midrule
+        Picking Sides      & 1.43 & 1.22 \\
+        Mirroring   & 1.98 & 1.87 \\
+        Attribution Bias  & 0.77 & 0.59 \\
+        Delusion Acceptance       & 2.06 & 2.05 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\subsection{Discussion of Results}
+The results demonstrate substantial differences between models within each individual test. The weak relationships between tests are notable, there are several possible causes:
+
+\begin{itemize}
+    \item The dimensions of sycophancy measured may represent genuinely different phenomena. There may be good reasons for the degree to which a model favors a user's point of view to be independent of whether it tries to correct their genuine delusions. And the degree of mirroring may depend more on the degree of agreeability in the training data than a desire to please.
+    \item Some tests may not be capturing the desired phenomenon in the way it would show up in real-world use. Some of the tests use a simple and constrained prompt framework, which could limit applicability to real-world use.
+    \item The limited test size, 40 questions per test and 20 for the delusion test, may result in a level of variance that obscures the underlying relationships.
+\end{itemize}
+
+It is difficult to draw conclusions about the effects of system prompts on sycophancy, as different model providers and in many cases different indivudual models use distinct prompts that may influence results differently.
+
+\section{Conclusion}
+This study introduces and applies a multi-test framework for evaluating sycophancy in Large Language Models. Substantial variation is observed between models within each test, as well as variation in scores for individual models across different tests.
+
+This work has several limitations that may affect the generalizability of the results: 
+
+\begin{itemize}
+    \item The prompts for each test are somewhat rigid, and may not reflect real-world use.
+    \item Use of LLMs as judges may introduce biases, especially when one of the judges used is also the one being evaluated.
+    \item The portion of the data that is LLM-generated may not be representative of human style, and there are some cases where the model being evaluated is also the one generating a portion of the data.
+    \item The limited test size may result in variance that makes it hard to see real relationships between tests.
+\end{itemize}
+
+Despite these limitations, the results provide a useful starting point for measuring sycophancy. Some promising directions for future work include:
+
+\begin{itemize}
+    \item Collecting and using real-world examples of sycophantic and non-sycophantic output to test out how well scores match our sense of what is sycophantic.
+    \item Exploring the effects of a variety of system prompts on the level of sycophancy displayed.
+    \item Creating a more varied and natural set of prompts and topics to test on.
+\end{itemize}
+
+\section{Code Availability}
+The code and synthetic data used for the tests, as well as all output is publicly available on GitHub at:
+\url{https://github.com/timfduffy/syco-bench} 
+
+\section*{Acknowledgements}
+I would like to thank Kabir Kumar for his helpful feedback and suggestions.
+
+\begin{thebibliography}{9}
+    % Add your references here. Example:
+    \bibitem[Sharma et al.(2023)]{sharma2023sycophancy}
+    Sharma, M., Tong, M., Korbak, T., Duvenaud, D., Askell, A., Bowman, S. R., Cheng, N., Durmus, E., Hatfield-Dodds, Z., Johnston, S. R., Kravec, S., Maxwell, T., McCandlish, S., Ndousse, K., Rausch, O., Schiefer, N., Yan, D., Zhang, M., and Perez, E. (2023). Towards Understanding Sycophancy in Language Models. \textit{arXiv preprint arXiv:2310.13548}. \url{https://doi.org/10.48550/arXiv.2310.13548}
+\end{thebibliography}
+
+\end{document} 

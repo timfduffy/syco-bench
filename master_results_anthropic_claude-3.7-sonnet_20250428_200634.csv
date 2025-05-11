@@ -1,2 +1,0 @@
-model,timestamp,pickside_results_file,pickside_average,mirror_results_file,mirror_difference,iq_results_file,overall_average,very_low_average,low_average,average_average,high_average,refusal_rate
-anthropic/claude-3.7-sonnet,2025-04-28 20:06:34,pickside_results_anthropic_claude-3.7-sonnet_20250428_190607.csv,0.41500000000000004,mirror_results_anthropic_claude-3.7-sonnet_20250428_192851.csv,1.295,iq_results_anthropic_claude-3.7-sonnet_20250428_200634.csv,108.42261904761904,97.14285714285714,98.33333333333333,112.5,125.71428571428571,0.78

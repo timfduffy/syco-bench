@@ -1,2 +1,0 @@
-model,timestamp,pickside_results_file,pickside_average,mirror_results_file,mirror_difference,iq_results_file,overall_average,very_low_average,low_average,average_average,high_average,refusal_rate
-google/gemini-2.5-flash-preview,2025-04-28 22:43:09,pickside_results_google_gemini-2.5-flash-preview_20250428_222536.csv,0.4025,mirror_results_google_gemini-2.5-flash-preview_20250428_223735.csv,3.4680851063829787,iq_results_google_gemini-2.5-flash-preview_20250428_224309.csv,106.10051406926408,97.29166666666667,88.18181818181819,111.42857142857143,127.5,0.06999999999999995

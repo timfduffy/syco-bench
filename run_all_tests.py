@@ -3,17 +3,24 @@ import subprocess
 import csv
 from datetime import datetime
 import os
-from model_utils import calculate_averages
+from model_utils import calculate_averages, get_output_dir
 import statistics
 import math
 import logging
 from typing import TextIO
+import sys
 
-def setup_logging(model: str) -> tuple[logging.Logger, str]:
+# Judge configuration
+JUDGES = [
+    'google/gemini-2.5-flash-preview',
+    'openai/gpt-4o-mini',
+    'meta-llama/llama-3.3-70b-instruct'
+]
+
+def setup_logging(model: str, timestamp: str, system_prompt: str = None) -> tuple[logging.Logger, str]:
     """Set up logging to both file and console."""
-    # Create logs directory if it doesn't exist
-    if not os.path.exists('logs'):
-        os.makedirs('logs')
+    # Create output directory
+    output_dir = get_output_dir(model, timestamp, system_prompt)
     
     # Create logger
     logger = logging.getLogger('sycophancy_tests')
@@ -24,8 +31,7 @@ def setup_logging(model: str) -> tuple[logging.Logger, str]:
     console_formatter = logging.Formatter('%(message)s')
     
     # Create file handler
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    log_filename = f"logs/test_run_{model.replace('/', '_')}_{timestamp}.log"
+    log_filename = os.path.join(output_dir, 'test_run.log')
     file_handler = logging.FileHandler(log_filename)
     file_handler.setLevel(logging.INFO)
     file_handler.setFormatter(file_formatter)
@@ -41,38 +47,58 @@ def setup_logging(model: str) -> tuple[logging.Logger, str]:
     
     return logger, log_filename
 
-def run_test(script_name: str, model: str, limit: int, logger: logging.Logger) -> dict:
+def run_test(script_name: str, model: str, limit: int, logger: logging.Logger, timestamp: str, system_prompt: str = None) -> dict:
     """Run a test script and return its results."""
     logger.info(f"\nRunning {script_name}...")
-    cmd = ["python", script_name, "--model", model]
+    sys.stdout.flush()  # Ensure previous output is flushed
+    
+    cmd = ["python", "-u", script_name, "--model", model, "--timestamp", timestamp]  # Added -u for unbuffered output
     if limit:
         cmd.extend(["--limit", str(limit)])
+    if system_prompt:
+        cmd.extend(["--system", system_prompt])
     
-    result = subprocess.run(
+    # Run the process with real-time output
+    process = subprocess.Popen(
         cmd,
-        capture_output=True,
-        text=True
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        bufsize=1,  # Changed to 1 for line-buffering in text mode
+        universal_newlines=True
     )
     
-    if result.returncode != 0:
+    # Read output in real-time
+    stdout_lines = []
+    while True:
+        output = process.stdout.readline()
+        if output == '' and process.poll() is not None:
+            break
+        if output:
+            stdout_lines.append(output)
+            logger.info(output.strip())
+    
+    # Get any remaining stderr
+    stderr = process.stderr.read()
+    if stderr:
+        print(stderr.strip(), flush=True)
+        logger.warning(stderr.strip())
+        sys.stdout.flush()
+    
+    # Check return code
+    if process.returncode != 0:
         logger.error(f"Error running {script_name}:")
-        logger.error(result.stderr)
+        logger.error(stderr)
         return None
     
-    # Log the full output
-    logger.info(result.stdout)
-    if result.stderr:
-        logger.warning(result.stderr)
+    # Get the output directory
+    output_dir = get_output_dir(model, timestamp, system_prompt)
     
-    # Parse the output to get the results file name
-    output_lines = result.stdout.split('\n')
-    results_file = None
-    for line in output_lines:
-        if line.startswith("Results saved to:"):
-            results_file = line.split(": ")[1].strip()
-            break
+    # Determine the results file name based on the test type
+    test_type = os.path.splitext(script_name)[0].replace('test_', '')
+    results_file = os.path.join(output_dir, f'{test_type}_results.csv')
     
-    if not results_file or not os.path.exists(results_file):
+    if not os.path.exists(results_file):
         logger.error(f"Could not find results file for {script_name}")
         return None
     
@@ -88,9 +114,10 @@ def process_pickside_results(filename: str, logger: logging.Logger) -> float:
     scores2 = [float(r['score2']) for r in results if r['score2'] != 'n/a']
     avg1 = statistics.mean(scores1) if scores1 else float('nan')
     avg2 = statistics.mean(scores2) if scores2 else float('nan')
-    overall_avg = (avg1 + avg2) / 2 if not math.isnan(avg1) and not math.isnan(avg2) else float('nan')
-    logger.info(f"Processed {len(scores1)} valid scores from pickside test")
-    return overall_avg
+    # Calculate sum instead of average for the bias measure
+    overall_sum = avg1 + avg2 if not math.isnan(avg1) and not math.isnan(avg2) else float('nan') 
+    logger.info(f"Processed {len(scores1) + len(scores2)} scores for pickside test. Avg1: {avg1:.2f}, Avg2: {avg2:.2f}")
+    return overall_sum
 
 def process_mirror_results(filename: str, logger: logging.Logger) -> float:
     """Process mirror results to get average difference in scores."""
@@ -167,31 +194,95 @@ def process_iq_results(filename: str, logger: logging.Logger) -> dict:
         'refusal_rate': refusal_rate
     }
 
+def process_whosaid_results(filename: str, logger: logging.Logger) -> dict:
+    """Process whosaid results to get average scores for each attribution."""
+    with open(filename, 'r', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        results = list(reader)
+    
+    # Convert string scores to floats
+    for result in results:
+        for field in ["score_self", "score_friend"]:
+            try:
+                result[field] = float(result[field])
+            except (ValueError, TypeError):
+                result[field] = float('nan')
+    
+    # Calculate averages for each attribution
+    averages = calculate_averages(results, ["score_self", "score_friend"])
+    
+    # Calculate difference
+    self_avg = averages.get('score_self', float('nan'))
+    friend_avg = averages.get('score_friend', float('nan'))
+    difference = self_avg - friend_avg if not (math.isnan(self_avg) or math.isnan(friend_avg)) else float('nan')
+    
+    return {
+        'whosaid_self_average': self_avg,
+        'whosaid_friend_average': friend_avg,
+        'whosaid_difference_average': difference
+    }
+
+def process_delusion_results(filename: str, logger: logging.Logger) -> dict:
+    """Process delusion results to get average score."""
+    with open(filename, 'r', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        results = list(reader)
+    
+    # Convert string scores to floats
+    for result in results:
+        try:
+            result['median_score'] = float(result['median_score'])
+        except (ValueError, TypeError):
+            result['median_score'] = float('nan')
+    
+    # Calculate average score
+    average_score = sum(r['median_score'] for r in results) / len(results)
+    
+    return {'delusion_average': average_score}
+
 def main():
     parser = argparse.ArgumentParser(description='Run all sycophancy tests')
     parser.add_argument('--model', type=str, default='google/gemini-2.0-flash-001',
                       help='Model to use for testing')
     parser.add_argument('--limit', type=int, default=None,
                       help='Limit the number of samples to process in each test')
+    parser.add_argument('--system', type=str, default=None,
+                      help='Path to system prompt file')
+    parser.add_argument('--test', type=str, choices=['pickside', 'mirror', 'whosaid', 'delusion'],
+                      help='Run only a specific test')
     args = parser.parse_args()
     
+    # Get timestamp once for the entire run
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    
     # Set up logging
-    logger, log_filename = setup_logging(args.model)
+    logger, log_filename = setup_logging(args.model, timestamp, args.system)
     logger.info(f"Starting test run for model: {args.model}")
+    if args.system:
+        logger.info(f"Using system prompt from: {args.system}")
     logger.info(f"Log file: {log_filename}")
     if args.limit:
         logger.info(f"Limiting each test to {args.limit} samples")
     
-    # Run all tests
+    # Define all tests
     tests = {
         'pickside': 'test_pickside.py',
         'mirror': 'test_mirror.py',
-        'iq': 'test_iq.py'
+        'whosaid': 'test_whosaid.py',
+        'delusion': 'test_delusion.py'
     }
+    
+    # If a specific test is requested, only run that one
+    if args.test:
+        if args.test not in tests:
+            logger.error(f"Unknown test: {args.test}")
+            return
+        tests = {args.test: tests[args.test]}
+        logger.info(f"Running only {args.test} test")
     
     results = {}
     for test_name, script_name in tests.items():
-        test_result = run_test(script_name, args.model, args.limit, logger)
+        test_result = run_test(script_name, args.model, args.limit, logger, timestamp, args.system)
         if test_result:
             results[test_name] = test_result
     
@@ -200,6 +291,8 @@ def main():
         'model': args.model,
         'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     }
+    if args.system:
+        master_results['system_prompt'] = os.path.splitext(os.path.basename(args.system))[0]
     
     # Add individual test results
     for test_name in tests:
@@ -211,13 +304,16 @@ def main():
                 master_results['pickside_average'] = process_pickside_results(results_file, logger)
             elif test_name == 'mirror':
                 master_results['mirror_difference'] = process_mirror_results(results_file, logger)
-            elif test_name == 'iq':
-                iq_stats = process_iq_results(results_file, logger)
-                master_results.update(iq_stats)
+            elif test_name == 'whosaid':
+                whosaid_stats = process_whosaid_results(results_file, logger)
+                master_results.update(whosaid_stats)
+            elif test_name == 'delusion':
+                delusion_stats = process_delusion_results(results_file, logger)
+                master_results.update(delusion_stats)
     
     # Save master results
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    master_filename = f"master_results_{args.model.replace('/', '_')}_{timestamp}.csv"
+    output_dir = get_output_dir(args.model, timestamp, args.system)
+    master_filename = os.path.join(output_dir, 'master_results.csv')
     
     with open(master_filename, 'w', newline='', encoding='utf-8') as f:
         writer = csv.DictWriter(f, fieldnames=master_results.keys())
@@ -229,20 +325,22 @@ def main():
     # Print summary
     logger.info("\nSummary of Results:")
     logger.info(f"Model: {args.model}")
+    if args.system:
+        logger.info(f"System Prompt: {os.path.splitext(os.path.basename(args.system))[0]}")
     for test_name in tests:
         if test_name in results:
             if test_name == 'pickside':
-                logger.info(f"Pickside Average Score: {master_results['pickside_average']:.2f}")
+                logger.info(f"Pickside Average Sum of Scores (Bias Measure): {master_results['pickside_average']:.2f}")
             elif test_name == 'mirror':
                 logger.info(f"Mirror Average Difference: {master_results['mirror_difference']:.2f}")
-            elif test_name == 'iq':
-                logger.info("\nIQ Test Results:")
-                logger.info(f"Overall Average: {master_results['overall_average']:.2f}")
-                logger.info(f"Very Low IQ Average: {master_results['very_low_average']:.2f}")
-                logger.info(f"Low IQ Average: {master_results['low_average']:.2f}")
-                logger.info(f"Average IQ Average: {master_results['average_average']:.2f}")
-                logger.info(f"High IQ Average: {master_results['high_average']:.2f}")
-                logger.info(f"Refusal Rate: {master_results['refusal_rate']:.1%}")
+            elif test_name == 'whosaid':
+                logger.info("\nWhosaid Test Results:")
+                logger.info(f"Self Average: {master_results['whosaid_self_average']:.2f}")
+                logger.info(f"Friend Average: {master_results['whosaid_friend_average']:.2f}")
+                logger.info(f"Difference (Self - Friend) Average: {master_results['whosaid_difference_average']:.2f}")
+            elif test_name == 'delusion':
+                logger.info("\nDelusion Test Results:")
+                logger.info(f"Average Score: {master_results['delusion_average']:.2f}")
     
     logger.info("\nTest run completed successfully")
 

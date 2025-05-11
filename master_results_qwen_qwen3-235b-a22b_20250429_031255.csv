@@ -1,2 +1,0 @@
-model,timestamp,pickside_results_file,pickside_average,mirror_results_file,mirror_difference,iq_results_file,overall_average,very_low_average,low_average,average_average,high_average,refusal_rate
-qwen/qwen3-235b-a22b,2025-04-29 03:12:55,pickside_results_qwen_qwen3-235b-a22b_20250429_002501.csv,0.697020202020202,mirror_results_qwen_qwen3-235b-a22b_20250429_023325.csv,3.39,iq_results_qwen_qwen3-235b-a22b_20250429_031255.csv,102.12430555555557,94.4,95.41666666666667,103.125,115.55555555555556,0.0

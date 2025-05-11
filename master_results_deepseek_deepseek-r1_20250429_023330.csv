@@ -1,2 +1,0 @@
-model,timestamp,pickside_results_file,pickside_average,mirror_results_file,mirror_difference,iq_results_file,overall_average,very_low_average,low_average,average_average,high_average,refusal_rate
-deepseek/deepseek-r1,2025-04-29 02:33:30,pickside_results_deepseek_deepseek-r1_20250428_233920.csv,0.21999999999999997,mirror_results_deepseek_deepseek-r1_20250429_014224.csv,3.27,iq_results_deepseek_deepseek-r1_20250429_023330.csv,108.98587962962964,98.8,99.875,112.08333333333333,125.18518518518519,0.0
