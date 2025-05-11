@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>syco-bench: A benchmark for LLM Sycophancy</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        html {
+            font-size: 125%;
+        }
+        body {
+            font-family: 'Inter', Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #fff;
+            color: #111;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        h1 {
+            text-align: center;
+            font-size: 2.75em;
+            margin-bottom: 0.7em;
+        }
+        .links {
+            display: flex;
+            justify-content: center;
+            gap: 2.5em;
+            margin-bottom: 2em;
+        }
+        .links a {
+            display: flex;
+            align-items: center;
+            gap: 0.4em;
+            font-size: 1.5em;
+            color: #222;
+            text-decoration: underline;
+        }
+        .links .icon {
+            width: 1.5em;
+            height: 1.5em;
+            vertical-align: middle;
+            margin-right: 0.2em;
+        }
+        .description {
+            text-align: left;
+            max-width: 1250px;
+            margin: 0 auto 2.5em auto;
+            font-size: 1.375em;
+        }
+        .tests-list {
+            margin-top: 0.7em;
+            margin-bottom: 0.5em;
+        }
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0;
+            max-width: 1250px;
+            margin: 0 auto;
+        }
+        .chart-box {
+            padding: 0;
+            background: #fafafa;
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            justify-content: center;
+            min-height: 275px;
+            height: 100%;
+        }
+        .chart-box img {
+            width: 100%;
+            height: auto;
+            max-width: 100%;
+            max-height: none;
+            display: block;
+            margin: 0;
+            cursor: pointer;
+        }
+        .chart-caption {
+            font-size: 1.3em;
+            color: #222;
+            margin-bottom: 0.7em;
+        }
+        @media (max-width: 900px) {
+            .container {
+                padding: 20px 5px;
+            }
+            .charts-grid {
+                max-width: 100vw;
+            }
+        }
+        @media (max-width: 700px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        #lightbox-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.85);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        #lightbox-overlay img {
+            max-width: 90vw;
+            max-height: 90vh;
+            box-shadow: 0 0 24px #000;
+            border-radius: 8px;
+        }
+        #lightbox-close {
+            position: absolute;
+            top: 40px;
+            right: 60px;
+            color: #fff;
+            font-size: 3.75em;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 1001;
+            user-select: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Syco-bench: A benchmark for LLM Sycophancy</h1>
+        <div class="links">
+            <a href="https://arxiv.org/" target="_blank">
+                <img src="arxiv-logomark-small.svg" alt="arXiv" class="icon">arXiv
+            </a>
+            <a href="https://github.com/timfduffy/syco-bench" target="_blank">
+                <img src="github-mark.svg" alt="GitHub" class="icon">GitHub
+            </a>
+        </div>
+        <div class="description">
+            Syco-bench is a four-part benchmark to evaluate how much models flatter and defer to their users. It consists of four tests:
+            <ul class="tests-list">
+                <li><b>Picking Sides:</b> How much the model sides with the user over a friend in an argument</li>
+                <li><b>Mirroring:</b> How much the model's position is affected by the position the user takes</li>
+                <li><b>Attribution Bias:</b> How much the model favors an idea attributed to the user vs someone else</li>
+                <li><b>Delusion Acceptance:</b> How much the model plays along to delusional statements rather than countering</li>
+            </ul>
+            The charts below show the results for each model tested, with and without the system prompt used in the provider's web interface. Click on a chart to see the full size version.
+        </div>
+        <div class="charts-grid">
+            <div class="chart-box">
+                <img src="pickside_chart.png" alt="Picking Sides Chart">
+            </div>
+            <div class="chart-box">
+                <img src="mirror_chart.png" alt="Mirroring Chart">
+            </div>
+            <div class="chart-box">
+                <img src="whosaid_chart.png" alt="Attribution Bias Chart">
+            </div>
+            <div class="chart-box">
+                <img src="delusion_chart.png" alt="Delusion Acceptance Chart">
+            </div>
+        </div>
+        <div class="results-summary" style="max-width: 1250px; margin: 3em auto 0 auto; font-size: 1.2em;">
+            <p>
+                The results show substantial differences between models within each individual test. However, the relationships between the different tests are generally weak, suggesting either that each test captures a relatively independent aspect of sycophancy, or that some tests may not be well-aligned with our concept of sycophancy. The correlation matrix below summarizes the relationships between the four test scores across models.
+            </p>
+            <div style="text-align:center; margin: 2em 0;">
+                <img src="correlation_matrix.png" alt="Correlation Matrix of Test Scores" style="max-width:625px; width:100%; height:auto; box-shadow:0 2px 12px #0002; cursor:pointer;" class="lightbox-img">
+            </div>
+        </div>
+        <div style="text-align:center; margin: 3em 0 1.5em 0; font-size:1.25em;">
+            <a href="mailto:timfduffy@gmail.com" style="color:#222; text-decoration:underline;">Contact: timfduffy@gmail.com</a>
+        </div>
+    </div>
+    <div id="lightbox-overlay">
+      <span id="lightbox-close">&times;</span>
+      <img id="lightbox-img" src="" alt="Maximized Chart">
+    </div>
+    <script>
+    document.querySelectorAll('.chart-box img, .lightbox-img').forEach(img => {
+        img.addEventListener('click', function() {
+            document.getElementById('lightbox-img').src = this.src;
+            document.getElementById('lightbox-overlay').style.display = 'flex';
+        });
+    });
+    document.getElementById('lightbox-overlay').addEventListener('click', function(e) {
+        if (e.target === this || e.target.id === 'lightbox-close') {
+            this.style.display = 'none';
+            document.getElementById('lightbox-img').src = '';
+        }
+    });
+    </script>
+</body>
+</html> 

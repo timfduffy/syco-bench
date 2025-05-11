@@ -1,2 +1,5 @@
 pandas
-matplotlib 
+matplotlib
+seaborn
+numpy
+requests
